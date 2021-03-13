@@ -15,6 +15,8 @@ camera.position.z = 100;
 camera.position.y = -150;
 camera.position.x = 100;
 
+var GlobalCar;
+
 function init() {
 
 
@@ -61,7 +63,7 @@ function init() {
         objLoader.setPath('assets/');
         objLoader.load('Jeep_Renegade_2016.obj', function(object) {
 
-            window.value = object
+            GlobalCar = object
             scene.add(object);
             object.castShadow = true;
             object.position.y -= 0;
@@ -79,105 +81,175 @@ function init() {
     var floor = new THREE.Mesh(geometry, material);
     scene.add(floor);
 
+
+
 }
+/**
+ * CAR OBJECT
+ */
+x = 0;
+y = 0;
+var car = {
+    x: x,
+    y: y,
+    vx: 0,
+    vy: 0,
+    angle: 0,
+
+    topSpeed: 5,
+    topSpeedBack: -2,
+    acceleration: 0.2,
+    reverse: 0.2,
+    brakes: 0.3,
+    friction: 0.07,
+    handeling: 15,
+    grip: 15,
+    minGrip: 5,
+    speed: 0,
+    drift: 0,
+    directionnalFriction: 8,
+
+    left: false,
+    forward: false,
+    right: false,
+    backward: false
+}
+
+
+
 window.teta = 0;
 var i = 2
 
 
-function keyDownHandler(e) {
+/**
+ * DETECTION OF KEYS FOR MOVEMENT
+ */
 
-    if (e.key == "Up" || e.key == "ArrowUp") {
-        function starter() {
+var leftKey = 37;
+var upKey = 38;
+var rightKey = 39;
+var downKey = 40;
 
-            //console.log(window.value.position.y)
-            window.value.position.y -= i * Math.cos(window.teta)
-            camera.position.y -= i * Math.cos(window.teta)
-                //window.value.position.y -= (-12 * Math.pow(Math.log(-i), 5) + 10) * Math.cos(teta)
-                //console.log(window.value.position.y)
-            window.value.position.x -= i * Math.sin(window.teta)
-            camera.position.x -= i * Math.sin(window.teta)
-                //window.value.position.x -= (-12 * Math.pow(Math.log(-i), 5) + 5) * Math.sin(teta)
-                //console.log(i)
-            if (i < 5) {
-                i += 0.1
+
+
+/**
+ * UPDATE CAR ALL PARAMETERS
+ */
+
+$(window).keydown(function(e) {
+    var keyCode = e.keyCode;
+
+    if (keyCode == leftKey) {
+        car.left = true;
+    } else if (keyCode == upKey) {
+        car.forward = true;
+    } else if (keyCode == rightKey) {
+        car.right = true;
+    } else if (keyCode == downKey) {
+        car.backward = true;
+    }
+});
+$(window).keyup(function(e) {
+    var keyCode = e.keyCode;
+    if (keyCode == leftKey) {
+        car.left = false;
+    } else if (keyCode == upKey) {
+        car.forward = false;
+    } else if (keyCode == rightKey) {
+        car.right = false;
+    } else if (keyCode == downKey) {
+        car.backward = false;
+    }
+});
+t = 0
+let avance = false
+let recul = false
+
+
+function updateStageObjects() {
+
+    // Car acceleration to top speed
+    if (car.forward) {
+        if (car.speed < car.topSpeed) {
+            car.speed = car.speed + car.acceleration;
+        }
+        avance = true
+    }
+    if (car.backward) {
+        if (car.speed < 1) {
+            if (car.speed > car.topSpeedBack) {
+                car.speed = car.speed - car.reverse;
             }
-
+        } else if (car.speed > 1) {
+            car.speed = car.speed - car.brakes;
         }
-        starter();
     }
-    if ((e.key == "Right" || e.key == "ArrowRight")) {
-        window.teta += 2 * Math.PI / 180
-        window.value.rotation.y = -teta
-        console.log(teta)
-            //console.log(window.value.position.y)
-        window.value.position.y -= i * Math.cos(window.teta)
-        camera.position.y -= i * Math.cos(window.teta)
-            //console.log(window.value.position.y)
-        window.value.position.x -= i * Math.sin(window.teta)
-        camera.position.x -= i * Math.sin(window.teta)
-            //console.log(i)
-        if (i < 5) {
-            i += 0.01
+
+    // Car drifting logic
+    if (car.forward && car.left) {
+        if (car.drift > -35) {
+            car.drift = car.drift - 3;
         }
-
-
-    }
-    if ((e.key == "Left" || e.key == "ArrowLeft")) {
-        window.teta -= 2 * Math.PI / 180
-        window.value.rotation.y = -window.teta
-        console.log(teta)
-            //console.log(window.value.position.y)
-        window.value.position.y -= i * Math.cos(window.teta)
-        camera.position.y -= i * Math.cos(window.teta)
-            //console.log(window.value.position.y)
-        window.value.position.x -= i * Math.sin(window.teta)
-        camera.position.x -= i * Math.sin(window.teta)
-            //console.log(i)
-        if (i < 5) {
-            i += 0.01
+    } else if (car.forward && car.right) {
+        if (car.drift < 35) {
+            car.drift = car.drift + 3;
         }
+    } else if (car.forward && !car.left && car.drift > -40 && car.drift < -3) {
+        car.drift = car.drift + 3;
+    } else if (car.forward && !car.right && car.drift < 40 && car.drift > 3) {
+        car.drift = car.drift - 3;
+    }
+    if (car.drift > 3) {
+        if (!car.forward && !car.left) {
+            car.drift = car.drift - 4;
+        }
+    } else if (car.drift > -40 && car.drift < -3) {
+        if (!car.forward && !car.right) {
+            car.drift = car.drift + 4;
+        }
+    }
+
+
+    // General car handeling when turning    
+    if (car.left && car.speed > 0) {
+        car.angle = car.angle + (car.handeling * car.speed / car.topSpeed);
+
+    } else if (car.right && car.speed > 0) {
+        car.angle = car.angle - (car.handeling * car.speed / car.topSpeed);
 
 
     }
+
+    // Constant application of friction / air resistance
+    if (car.speed > 0) {
+        car.speed = car.speed - car.friction;
+    } else if (car.speed < 0) {
+        car.speed = car.speed + car.friction;
+    }
+
+
+    // Update car velocity (speed + direction)
+    car.vy = -Math.cos(car.angle / car.directionnalFriction * Math.PI / 180) * car.speed;
+    car.vx = Math.sin(car.angle / car.directionnalFriction * Math.PI / 180) * car.speed;
+
+    // Plot the new velocity into x and y cords
+    GlobalCar.position.y += car.vy;
+    GlobalCar.position.x += car.vx;
+    GlobalCar.rotation.y = car.angle / car.directionnalFriction * Math.PI / 180
+
+    camera.position.y += car.vy;
+    camera.position.x += car.vx;
 }
-
-function stopStraight(e) {
-
-    //if (e.key == "Up" || e.key == "ArrowUp") {
-    let j = 2
-
-    function stopStraight() {
-        if (j < 25) {
-            //console.log(window.value.position.y)
-
-            window.value.position.y -= 1 / j * Math.cos(window.teta)
-            camera.position.y -= 1 / j * Math.cos(window.teta)
-                //console.log(window.value.position.y)
-
-            window.value.position.x -= 1 / j * Math.sin(window.teta)
-            camera.position.x -= 1 / j * Math.sin(window.teta)
-            j += 0.05
-            if (i > 2) {
-                i -= 0.03
-            }
-        } else {
-            i = 2
-            return
-        }
-        setTimeout(stopStraight, 0)
-    }
-    stopStraight()
-        //}
-}
+/**
+ * FUNCTION FOR ANIMATION
+ */
 
 
 var animate = function() {
 
     requestAnimationFrame(animate);
     //controls.update();
-
-    window.addEventListener("keydown", keyDownHandler, false);
-    window.addEventListener("keyup", stopStraight, false);
+    updateStageObjects()
 
     camera.rotation.x = 60 * Math.PI / 180;
     camera.rotation.y = 30 * Math.PI / 180;
@@ -194,4 +266,6 @@ onWindowSize = () => {
 
 window.addEventListener('resize', onWindowSize, false)
 init()
-animate();
+setTimeout(() => {
+    animate();
+}, 500);
